@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STM32 Monitoring Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1>STM32 Monitoring Dashboard</h1>
+                <p class="subtitle">Real-time sensor data monitoring</p>
+            </div>
+            <div class="header-right">
+                <div class="mode-control">
+                    <button id="btnAuto" class="mode-btn active" onclick="setMode('auto')">
+                        <span class="icon">⚡</span>
+                        Auto Mode
+                    </button>
+                    <button id="btnManual" class="mode-btn" onclick="setMode('manual')">
+                        <span class="icon">⚙️</span>
+                        Manual Mode
+                    </button>
+                </div>
+                <div id="chillerControl" class="chiller-control" style="display: none;">
+                    <button id="btnChillerOn" class="chiller-btn on" onclick="controlChiller('ON')">
+                        <span class="icon">❄️</span>
+                        Chiller ON
+                    </button>
+                    <button id="btnChillerOff" class="chiller-btn off" onclick="controlChiller('OFF')">
+                        <span class="icon">❄️</span>
+                        Chiller OFF
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Current Sensor Readings -->
+        <div class="sensor-cards">
+            <div class="card">
+                <div class="card-icon">☀️</div>
+                <div class="card-content">
+                    <div class="card-label">LDR Value</div>
+                    <div class="card-value" id="currentLDR">-</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">⚡</div>
+                <div class="card-content">
+                    <div class="card-label">Voltage</div>
+                    <div class="card-value" id="currentVoltage">-</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🌡️</div>
+                <div class="card-content">
+                    <div class="card-label">Temperature</div>
+                    <div class="card-value" id="currentTemp">-</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">❄️</div>
+                <div class="card-content">
+                    <div class="card-label">Chiller</div>
+                    <div class="card-value" id="currentChiller">-</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🖼️</div>
+                <div class="card-content">
+                    <div class="card-label">State</div>
+                    <div class="card-value" id="currentState">-</div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-icon">📊</div>
+                <div class="card-content">
+                    <div class="card-label">Mode</div>
+                    <div class="card-value" id="currentMode">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensor History -->
+        <div class="history-section">
+            <div class="history-header">
+                <h2>Sensor History</h2>
+                <span class="last-updated">Last updated: <span id="lastUpdated">-</span></span>
+            </div>
+            <div class="table-container">
+                <table id="historyTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>LDR</th>
+                            <th>Voltage (V)</th>
+                            <th>Temp (°C)</th>
+                            <th>Chiller</th>
+                            <th>State</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyBody">
+                        <tr>
+                            <td colspan="7" class="loading">Loading data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>STM32 Controller: <span id="connectionStatus">Connected</span></p>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
