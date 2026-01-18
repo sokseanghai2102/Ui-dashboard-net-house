@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 // ================= MQTT Configuration =================
 // Use your computer's IP address so ESP32 can connect
 // Find your IP with: ipconfig (Windows) or ifconfig (Linux/Mac)
-const brokerUrl = 'mqtt://192.168.55.51:1883';  // Change to your computer's IP address
+const brokerUrl = 'mqtt://192.168.127.51:1883';  // Change to your computer's IP address
 const mqttTopic = 'hydro/data';  // Match the ESP32 topic
 const mqttControlTopic = 'hydro/control';  // Control topic for mode updates
 
@@ -88,9 +88,14 @@ client.on('message', async (topic, message) => {
 // ================= Parse STM32 Data =================
 function parseSTM32Data(dataString) {
   // Format: "Date:29-12-2025 Time=00:47:09 LDR=1174 VB=56.50 T=30.00 CHILLER=OFF(A) MODE=AUTO STATE=S0"
+  // Use current date/time as fallback if parsing fails
+  const now = new Date();
+  const defaultDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+  const defaultTime = now.toTimeString().split(' ')[0]; // HH:MM:SS
+  
   const result = {
-    record_date: null,
-    record_time: null,
+    record_date: defaultDate, // Default to current date
+    record_time: defaultTime, // Default to current time
     ldr_value: null,
     battery_voltage: null,
     temperature: null,
@@ -104,13 +109,32 @@ function parseSTM32Data(dataString) {
     const dateMatch = dataString.match(/Date:(\d{2}-\d{2}-\d{4})/);
     if (dateMatch) {
       const [day, month, year] = dateMatch[1].split('-');
-      result.record_date = `${year}-${month}-${day}`; // Convert to YYYY-MM-DD format
+      // Validate date components (basic validation)
+      const dayNum = parseInt(day);
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(year);
+      
+      // Only use if values are reasonable (year between 2000-2100, month 1-12, day 1-31)
+      if (yearNum >= 2000 && yearNum <= 2100 && monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31) {
+        result.record_date = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`; // Convert to YYYY-MM-DD format
+      } else {
+        console.warn(`⚠️  Invalid date format: ${day}-${month}-${year}, using current date: ${result.record_date}`);
+      }
     }
 
     // Extract Time: HH:MM:SS
-    const timeMatch = dataString.match(/Time=(\d{2}:\d{2}:\d{2})/);
+    const timeMatch = dataString.match(/Time=(\d{1,2}):(\d{1,2}):(\d{1,2})/);
     if (timeMatch) {
-      result.record_time = timeMatch[1];
+      const hours = parseInt(timeMatch[1]);
+      const minutes = parseInt(timeMatch[2]);
+      const seconds = parseInt(timeMatch[3]);
+      
+      // Validate time components
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && seconds >= 0 && seconds <= 59) {
+        result.record_time = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2].padStart(2, '0')}:${timeMatch[3].padStart(2, '0')}`;
+      } else {
+        console.warn(`⚠️  Invalid time format: ${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3]}, using current time: ${result.record_time}`);
+      }
     }
 
     // Extract LDR value
@@ -188,14 +212,19 @@ async function publishSystemStatus() {
 // ================= Process and Store Data =================
 async function processAndStoreData(messageStr) {
   try {
-    // Parse JSON message from ESP32
-    const data = JSON.parse(messageStr);
+    let sensorData = '';
     
-    console.log('📊 Parsed data:', data);
-
-    // Extract data string
-    const sensorData = data.data || '';
-    const dbInfo = data.database || {};
+    // Try to parse as JSON first (for backward compatibility)
+    try {
+      const data = JSON.parse(messageStr);
+      console.log('📊 Parsed JSON data:', data);
+      // Extract data string from JSON
+      sensorData = data.data || messageStr;
+    } catch (jsonError) {
+      // If not JSON, treat as raw text directly
+      console.log('📊 Raw text data received');
+      sensorData = messageStr;
+    }
 
     // Parse STM32 data format
     const parsedData = parseSTM32Data(sensorData);
@@ -225,25 +254,91 @@ async function processAndStoreData(messageStr) {
     console.log(`   LDR: ${parsedData.ldr_value}, Voltage: ${parsedData.battery_voltage}V, Temp: ${parsedData.temperature}°C`);
 
     // Update system_status table with current chiller status and state from STM32
-    if (parsedData.chiller || parsedData.state) {
+    // Always update if we have chiller, state, or mode data
+    if (parsedData.chiller || parsedData.state || parsedData.mode) {
       try {
-        const updateStatusQuery = `
-          UPDATE system_status 
-          SET chiller_status = COALESCE($1, chiller_status),
-              fsm_state = COALESCE($2, fsm_state),
-              record_date = $3,
-              record_time = $4
-          WHERE id = (SELECT id FROM system_status ORDER BY id DESC LIMIT 1)
-          RETURNING id;
-        `;
-        const statusResult = await pool.query(updateStatusQuery, [
-          parsedData.chiller || null,
-          parsedData.state || null,
-          parsedData.record_date || null,
-          parsedData.record_time || null
-        ]);
-        if (statusResult.rows.length > 0) {
-          console.log(`   Updated system_status: Chiller=${parsedData.chiller || 'unchanged'}, State=${parsedData.state || 'unchanged'}`);
+        // Build dynamic update query based on what data we have
+        const updates = [];
+        const values = [];
+        let paramIndex = 1;
+        
+        // Always update chiller_status if we have it
+        if (parsedData.chiller) {
+          updates.push(`chiller_status = $${paramIndex}`);
+          values.push(parsedData.chiller);
+          paramIndex++;
+        }
+        
+        // Always update fsm_state if we have it
+        if (parsedData.state) {
+          updates.push(`fsm_state = $${paramIndex}`);
+          values.push(parsedData.state);
+          paramIndex++;
+        }
+        
+        // Always update mode if we have it
+        if (parsedData.mode) {
+          updates.push(`mode = $${paramIndex}`);
+          values.push(parsedData.mode.toLowerCase());
+          paramIndex++;
+        }
+        
+        // Update date and time if available
+        if (parsedData.record_date) {
+          updates.push(`record_date = $${paramIndex}`);
+          values.push(parsedData.record_date);
+          paramIndex++;
+        }
+        
+        if (parsedData.record_time) {
+          updates.push(`record_time = $${paramIndex}`);
+          values.push(parsedData.record_time);
+          paramIndex++;
+        }
+        
+        if (updates.length > 0) {
+          // First try to update existing record
+          const updateStatusQuery = `
+            UPDATE system_status 
+            SET ${updates.join(', ')}
+            WHERE id = (SELECT id FROM system_status ORDER BY id DESC LIMIT 1)
+            RETURNING id, chiller_status, fsm_state, mode;
+          `;
+          
+          const statusResult = await pool.query(updateStatusQuery, values);
+          
+          if (statusResult.rows.length > 0) {
+            // Update successful
+            const updated = statusResult.rows[0];
+            const updateLog = [];
+            if (parsedData.chiller) updateLog.push(`Chiller=${updated.chiller_status}`);
+            if (parsedData.state) updateLog.push(`State=${updated.fsm_state}`);
+            if (parsedData.mode) updateLog.push(`Mode=${updated.mode}`);
+            console.log(`   ✅ Updated system_status: ${updateLog.join(', ')}`);
+          } else {
+            // No existing record, create a new one
+            const currentDate = parsedData.record_date || new Date().toISOString().split('T')[0];
+            const currentTime = parsedData.record_time || new Date().toTimeString().split(' ')[0];
+            const insertValues = [
+              parsedData.mode ? parsedData.mode.toLowerCase() : 'auto',
+              currentDate,
+              currentTime,
+              parsedData.chiller || 'OFF',
+              parsedData.state || 'S0'
+            ];
+            
+            const insertQuery = `
+              INSERT INTO system_status (mode, record_date, record_time, chiller_status, fsm_state, created_at)
+              VALUES ($1, $2, $3, $4, $5, NOW())
+              RETURNING id, chiller_status, fsm_state, mode;
+            `;
+            
+            const insertResult = await pool.query(insertQuery, insertValues);
+            if (insertResult.rows.length > 0) {
+              const inserted = insertResult.rows[0];
+              console.log(`   ✅ Created system_status: Chiller=${inserted.chiller_status}, State=${inserted.fsm_state}, Mode=${inserted.mode}`);
+            }
+          }
         }
       } catch (statusError) {
         console.error('⚠️  Error updating system_status:', statusError.message);

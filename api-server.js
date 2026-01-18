@@ -7,7 +7,7 @@ const app = express();
 const PORT = 3000;
 
 // MQTT Configuration for sending commands to ESP32
-const MQTT_BROKER_URL = 'mqtt://192.168.110.34:1883';
+const MQTT_BROKER_URL = 'mqtt://192.168.127.51:1883';
 const MQTT_CONTROL_TOPIC = 'hydro/control/chiller'; // Topic for chiller control commands
 
 // Connect to MQTT broker for sending commands

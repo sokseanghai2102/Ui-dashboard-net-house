@@ -63,83 +63,111 @@ body {
     color: #b0b0b0;
 }
 
+/* Control Group */
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 /* Mode Control Buttons */
 .mode-control {
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .mode-btn {
-    padding: 12px 24px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: #b0b0b0;
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: all 0.3s ease;
+    gap: 6px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .mode-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .mode-btn.active {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    border-color: #4facfe;
-    box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+    background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(74, 222, 128, 0.3);
 }
 
 .mode-btn .icon {
-    font-size: 18px;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.mode-btn .btn-text {
+    font-weight: 600;
+    letter-spacing: 0.3px;
 }
 
 /* Chiller Control Buttons */
 .chiller-control {
     display: flex;
-    gap: 10px;
-    margin-left: 20px;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .chiller-btn {
-    padding: 12px 24px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    color: #b0b0b0;
     border-radius: 8px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
-    transition: all 0.3s ease;
+    gap: 6px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
 .chiller-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .chiller-btn.on {
     background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-    border-color: #4ade80;
-    box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(74, 222, 128, 0.3);
 }
 
 .chiller-btn.off {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    border-color: #ef4444;
-    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .chiller-btn .icon {
-    font-size: 18px;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.chiller-btn .btn-text {
+    font-weight: 600;
+    letter-spacing: 0.3px;
 }
 
 /* Sensor Cards */
@@ -323,6 +351,28 @@ tbody tr:last-child td {
         flex-direction: column;
         gap: 20px;
         align-items: flex-start;
+    }
+
+    .header-right {
+        width: 100%;
+    }
+
+    .control-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+    }
+
+    .mode-control,
+    .chiller-control {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .mode-btn,
+    .chiller-btn {
+        flex: 1;
+        justify-content: center;
     }
 
     .sensor-cards {

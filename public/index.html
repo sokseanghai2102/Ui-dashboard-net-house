@@ -15,25 +15,27 @@
                 <p class="subtitle">Real-time sensor data monitoring</p>
             </div>
             <div class="header-right">
-                <div class="mode-control">
-                    <button id="btnAuto" class="mode-btn active" onclick="setMode('auto')">
-                        <span class="icon">⚡</span>
-                        Auto Mode
-                    </button>
-                    <button id="btnManual" class="mode-btn" onclick="setMode('manual')">
-                        <span class="icon">⚙️</span>
-                        Manual Mode
-                    </button>
-                </div>
-                <div id="chillerControl" class="chiller-control" style="display: none;">
-                    <button id="btnChillerOn" class="chiller-btn on" onclick="controlChiller('ON')">
-                        <span class="icon">❄️</span>
-                        Chiller ON
-                    </button>
-                    <button id="btnChillerOff" class="chiller-btn off" onclick="controlChiller('OFF')">
-                        <span class="icon">❄️</span>
-                        Chiller OFF
-                    </button>
+                <div class="control-group">
+                    <div class="mode-control">
+                        <button id="btnAuto" class="mode-btn active" onclick="setMode('auto')">
+                            <span class="icon">⚡</span>
+                            <span class="btn-text">Auto</span>
+                        </button>
+                        <button id="btnManual" class="mode-btn" onclick="setMode('manual')">
+                            <span class="icon">⚙️</span>
+                            <span class="btn-text">Manual</span>
+                        </button>
+                    </div>
+                    <div id="chillerControl" class="chiller-control" style="display: none;">
+                        <button id="btnChillerOn" class="chiller-btn on" onclick="controlChiller('ON')">
+                            <span class="icon">❄️</span>
+                            <span class="btn-text">ON</span>
+                        </button>
+                        <button id="btnChillerOff" class="chiller-btn off" onclick="controlChiller('OFF')">
+                            <span class="icon">❄️</span>
+                            <span class="btn-text">OFF</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>

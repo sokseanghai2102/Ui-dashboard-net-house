@@ -6,7 +6,7 @@ server.listen(port, '0.0.0.0', () => {
   console.log('🚀 MQTT Broker started');
   console.log(`📡 Listening on 0.0.0.0:${port}`);
   console.log(`   Local:   mqtt://localhost:${port}`);
-  console.log(`   Network: mqtt://192.168.55.51:${port}`);
+  console.log(`   Network: mqtt://192.168.127.51:${port}`);
   console.log('\n✅ Ready to accept connections from ESP32 and subscribers');
 });
 
