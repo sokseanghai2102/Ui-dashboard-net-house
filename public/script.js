@@ -63,12 +63,29 @@ async function setMode(mode) {
             body: JSON.stringify({ mode })
         });
         
+        // Check if response is ok before parsing
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (e) {
+                errorData = { error: errorText || `HTTP ${response.status}: ${response.statusText}` };
+            }
+            console.error('HTTP Error:', response.status, errorData);
+            showNotification('Error updating mode: ' + (errorData.error || 'Unknown error'), 'error');
+            return;
+        }
+        
         const result = await response.json();
         
         if (result.success) {
             currentMode = mode;
             updateModeButtons(mode);
             console.log(`Mode changed to: ${mode}`);
+            
+            // Reload system status to ensure we have the latest data
+            await loadSystemStatus();
             
             // Show success message
             showNotification(`Mode changed to ${mode.toUpperCase()}`, 'success');
@@ -92,6 +109,20 @@ async function controlChiller(action) {
             },
             body: JSON.stringify({ action })
         });
+        
+        // Check if response is ok before parsing
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (e) {
+                errorData = { error: errorText || `HTTP ${response.status}: ${response.statusText}` };
+            }
+            console.error('HTTP Error:', response.status, errorData);
+            showNotification('Error: ' + (errorData.error || 'Unknown error'), 'error');
+            return;
+        }
         
         const result = await response.json();
         

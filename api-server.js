@@ -25,6 +25,8 @@ try {
 
   mqttClient.on('connect', () => {
     console.log('✅ API Server: Connected to MQTT broker for sending commands');
+    console.log(`   Broker: ${MQTT_BROKER_URL}`);
+    console.log(`   Control Topic: ${MQTT_CONTROL_TOPIC}`);
     mqttConnectionAttempts = 0; // Reset counter on successful connection
   });
 
@@ -215,7 +217,19 @@ app.post('/api/status', async (req, res) => {
       const existingId = checkResult.rows[0].id;
       const existingDate = checkResult.rows[0].record_date || currentDate;
       const existingTime = checkResult.rows[0].record_time || currentTime;
-      const existingChiller = checkResult.rows[0].chiller_status || 'OFF';
+      
+      // Handle chiller_status - could be boolean or string
+      let existingChiller = checkResult.rows[0].chiller_status;
+      if (existingChiller === null || existingChiller === undefined) {
+        existingChiller = 'OFF';
+      } else if (typeof existingChiller === 'boolean') {
+        existingChiller = existingChiller ? 'ON' : 'OFF';
+      } else if (typeof existingChiller === 'string') {
+        // Keep as is
+      } else {
+        existingChiller = 'OFF';
+      }
+      
       const existingState = checkResult.rows[0].fsm_state || 'S0';
       
       // Update existing - update mode and keep existing other values
@@ -225,12 +239,17 @@ app.post('/api/status', async (req, res) => {
         WHERE id = $6
         RETURNING id, mode, record_date, record_time, chiller_status, fsm_state, created_at
       `;
+      
+      console.log(`Updating system_status: id=${existingId}, mode=${modeValue}, chiller=${existingChiller}, state=${existingState}`);
       result = await pool.query(updateQuery, [modeValue, existingDate, existingTime, existingChiller, existingState, existingId]);
       
       // Verify the update worked
       if (!result.rows.length) {
+        console.error('Update failed - no rows affected. Query:', updateQuery, 'Params:', [modeValue, existingDate, existingTime, existingChiller, existingState, existingId]);
         throw new Error('Update failed - no rows affected');
       }
+      
+      console.log(`✅ Successfully updated system_status: mode=${result.rows[0].mode}, id=${result.rows[0].id}`);
     } else {
       // Insert new
       const insertQuery = `
@@ -239,6 +258,22 @@ app.post('/api/status', async (req, res) => {
         RETURNING id, mode, record_date, record_time, chiller_status, fsm_state, created_at
       `;
       result = await pool.query(insertQuery, [modeValue, currentDate, currentTime, 'OFF', 'S0']);
+    }
+
+    // Send MQTT command to ESP32 to update mode
+    if (mqttClient && mqttClient.connected) {
+      const modeCommand = `MODE=${modeValue.toUpperCase()}`;
+      
+      mqttClient.publish(MQTT_CONTROL_TOPIC, modeCommand, { qos: 1 }, (err) => {
+        if (err) {
+          console.error('Error publishing mode command:', err);
+        } else {
+          console.log(`📤 Sent mode command to ESP32: ${modeCommand}`);
+          console.log(`   Topic: ${MQTT_CONTROL_TOPIC}`);
+        }
+      });
+    } else {
+      console.warn('⚠️  MQTT client not connected, mode command not sent to ESP32');
     }
 
     res.json({ 
@@ -290,36 +325,25 @@ app.post('/api/chiller/control', async (req, res) => {
 
     // Send MQTT command to ESP32 to control chiller
     if (mqttClient && mqttClient.connected) {
-      // First ensure system is in MANUAL mode
-      const modeCommand = 'MODE=MANUAL';
       const chillerCommand = `CHILLER=${action.toUpperCase()}`;
       
-      // Publish mode command first
-      mqttClient.publish(MQTT_CONTROL_TOPIC, modeCommand, { qos: 1 }, (err) => {
+      // Publish chiller command directly (mode should already be manual from previous check)
+      mqttClient.publish(MQTT_CONTROL_TOPIC, chillerCommand, { qos: 1 }, (err) => {
         if (err) {
-          console.error('Error publishing mode command:', err);
+          console.error('❌ Error publishing chiller command:', err);
         } else {
-          console.log(`📤 Sent mode command to ESP32: ${modeCommand}`);
-          
-          // Wait a bit before sending chiller command to ensure mode is set
-          setTimeout(() => {
-            mqttClient.publish(MQTT_CONTROL_TOPIC, chillerCommand, { qos: 1 }, (err) => {
-              if (err) {
-                console.error('Error publishing chiller command:', err);
-              } else {
-                console.log(`📤 Sent chiller command to ESP32: ${chillerCommand}`);
-                console.log(`   Topic: ${MQTT_CONTROL_TOPIC}`);
-              }
-            });
-          }, 500); // 500ms delay to ensure MODE command is processed first
+          console.log(`📤 Sent chiller command to ESP32: ${chillerCommand}`);
+          console.log(`   Topic: ${MQTT_CONTROL_TOPIC}`);
         }
       });
     } else {
       console.warn('⚠️  MQTT client not connected, command not sent');
-      return res.status(503).json({ 
-        success: false, 
-        error: 'MQTT broker not available. Please start the broker: npm run broker' 
-      });
+      console.warn(`   mqttClient exists: ${!!mqttClient}, connected: ${mqttClient ? mqttClient.connected : 'N/A'}`);
+      // Don't return error - still update database, just warn about MQTT
+      // return res.status(503).json({ 
+      //   success: false, 
+      //   error: 'MQTT broker not available. Please start the broker: npm run broker' 
+      // });
     }
     
     res.json({ 
